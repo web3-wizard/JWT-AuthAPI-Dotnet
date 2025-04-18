@@ -7,7 +7,10 @@ namespace JWTAuthApi.Users.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController(IHashingService hashingService, ILogger<AuthController> logger) : ControllerBase
+public class AuthController(
+    IHashingService hashingService,
+    ITokenService tokenService,
+    ILogger<AuthController> logger) : ControllerBase
 {
     private static readonly List<User> _users = [];
 
@@ -41,7 +44,7 @@ public class AuthController(IHashingService hashingService, ILogger<AuthControll
 
     [HttpPost]
     [Route("login")]
-    public ActionResult<string> Login([FromBody] LoginRequest request)
+    public ActionResult Login([FromBody] LoginRequest request)
     {
         if (ModelState.IsValid == false)
         {
@@ -64,10 +67,10 @@ public class AuthController(IHashingService hashingService, ILogger<AuthControll
             return BadRequest("Invalid Credentials!");
         }
 
-        var token = "SUCCESS_TOKEN";
+        var token = tokenService.GenerateToken(user);
         logger.LogInformation("Token generated successfully.");
 
-        return Ok(token);
+        return Ok(new { Token = token });
     }
 
     [HttpGet]

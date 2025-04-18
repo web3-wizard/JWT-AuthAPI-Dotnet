@@ -1,11 +1,10 @@
-using JWTAuthApi.Users.Services;
-using JWTAuthApi.Users.Services.Interfaces;
+using JWTAuthApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-builder.Services.AddScoped<IHashingService, HashingService>();
+builder.Services.AddApiServices(builder.Configuration);
 
 var app = builder.Build();
 
