@@ -14,7 +14,8 @@ public static class ApiExtensions
 
         var dbConnectionString = configuration.GetConnectionString("Database");
 
-        services.AddDbContext<AppDbContext>(option => option.UseSqlite());
+        services.AddDbContext<AppDbContext>(option => 
+            option.UseSqlite(dbConnectionString));
 
         services.AddScoped<IHashingService, HashingService>();
         services.AddScoped<ITokenService, TokenService>();
