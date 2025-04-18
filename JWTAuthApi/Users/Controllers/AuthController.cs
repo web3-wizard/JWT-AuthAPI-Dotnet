@@ -72,10 +72,4 @@ public class AuthController(
 
         return Ok(new { Token = token });
     }
-
-    [HttpGet]
-    public ActionResult<List<User>> GetUsers()
-    {
-        return Ok(_users);
-    }
 }
