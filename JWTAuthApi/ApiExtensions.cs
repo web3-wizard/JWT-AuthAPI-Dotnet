@@ -19,6 +19,8 @@ public static class ApiExtensions
 
         services.AddScoped<IHashingService, HashingService>();
         services.AddScoped<ITokenService, TokenService>();
+        
+        services.AddScoped<IAuthService, AuthService>();
 
         return services;
     }
