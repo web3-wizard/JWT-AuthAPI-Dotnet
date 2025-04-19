@@ -9,11 +9,7 @@ public static class MigrationExtension
         using var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>()?.CreateScope();
 
         var context = serviceScope?.ServiceProvider.GetRequiredService<AppDbContext>();
-
-        if (context?.Database.HasPendingModelChanges() == true)
-        {
-            context?.Database.Migrate();
-        }
+        context?.Database.Migrate();
 
         return app;
     }

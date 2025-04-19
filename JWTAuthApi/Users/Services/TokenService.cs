@@ -24,10 +24,10 @@ public class TokenService(IOptions<JWTConfig> jwtOptions) : ITokenService
         
         var claims = new List<Claim>
         {
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name,user.Name),
             new(ClaimTypes.Email,user.Email),
             new("UserName", user.Username),
-            new("ID", user.Id.ToString()),
         };
 
         var token = new JwtSecurityToken(
