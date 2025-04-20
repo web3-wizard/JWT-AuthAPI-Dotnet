@@ -13,8 +13,7 @@ public class TokenService(IOptions<JWTConfig> jwtOptions) : ITokenService
 {
     private readonly JWTConfig _jwtConfig = jwtOptions.Value;
     private readonly string _securityAlgorithm = SecurityAlgorithms.HmacSha512;
-
-    // private readonly 
+ 
     public string GenerateToken(User user)
     {
         var key = Encoding.UTF8.GetBytes(_jwtConfig.Key);
