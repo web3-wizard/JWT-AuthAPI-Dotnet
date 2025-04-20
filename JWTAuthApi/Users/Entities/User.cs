@@ -28,6 +28,9 @@ public class User
     public string PasswordHash { get; private set; }
     
     public List<string> Roles { get; private set; }
+    public bool IsEmailConfirmed { get; private set; }
+    public DateTime CreatedAt { get; init; }
+    public DateTime UpdatedAt { get; private set; }
 
     private User(string name, string username, string email, List<string> roles)
     {
@@ -37,6 +40,9 @@ public class User
         Email = email.ToLower();
         PasswordHash = string.Empty;
         Roles = roles;
+        IsEmailConfirmed = false;
+        CreatedAt =  DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public static User CreateGuestUser(string name, string username, string email)
@@ -53,10 +59,22 @@ public class User
     public void UpdatePassword(string passwordHash)
     {
         PasswordHash = passwordHash;
+        UpdatedAt  = DateTime.UtcNow;
     }
 
-    public void AddRole(string role)
+    public void AddUserRole()
     {
-        Roles.Add(role);
+        IsEmailConfirmed = true;
+        Roles.Remove(nameof(UserRoles.Guest));
+        Roles.Add(nameof(UserRoles.User));
+        UpdatedAt = DateTime.UtcNow;
+    }
+    
+    public void AddAdminRole()
+    {
+        IsEmailConfirmed = true;
+        Roles.Remove(nameof(UserRoles.Guest));
+        Roles.AddRange([nameof(UserRoles.User), nameof(UserRoles.Admin)]);
+        UpdatedAt = DateTime.UtcNow;
     }
 }

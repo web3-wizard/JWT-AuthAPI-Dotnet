@@ -55,7 +55,9 @@ public class AuthService(
         try
         {
             logger.LogInformation("Checking for existing user");
-            var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Username == request.Username.ToLower());
+            var user = await dbContext.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Username == request.Username.ToLower());
 
             if (user is null)
             {
@@ -87,12 +89,45 @@ public class AuthService(
         }
     }
 
+    public async Task<ServiceResult> ConfirmedEmail(VerifyEmailRequest request)
+    {
+        try
+        {
+            var user = await dbContext.Users.FindAsync(request.UserId);
+
+            if (user is null)
+            {
+                return new ServiceResult(HttpStatusCode.NotFound, "User not exists!");
+            }
+
+            if (user.Email.Equals(request.Email) == false)
+            {
+                return new ServiceResult(HttpStatusCode.Forbidden, "You don't have required accessed!");
+            }
+
+            if (user.Roles.Contains(nameof(UserRoles.Guest)))
+            {
+                user.AddUserRole();
+            }
+
+            await dbContext.SaveChangesAsync();
+
+            return new ServiceResult(HttpStatusCode.OK, "Email confirmed!");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(exception: ex, message: $"Failed to confirmed user email. Error: {ex.Message}");
+            return new ServiceResult<LoginResponse>(HttpStatusCode.InternalServerError, "Something went wrong");
+        }
+    }
+
     private async Task<bool> CheckIfUserExists(string email, string username)
     {
-        var existingUser = await dbContext.Users.FirstOrDefaultAsync(
-            x => x.Username == username.ToLower() 
-                 || x.Email == email.ToLower());
+        var user = await dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Username == username.ToLower() 
+                                      || x.Email == email.ToLower());
 
-        return existingUser is not null;
+        return user is not null;
     }
 }

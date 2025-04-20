@@ -23,8 +23,7 @@ public static class DataSeeder
         var adminPassword = hashingService.HashPassword(adminUser, "Admin1234");
         
         adminUser.UpdatePassword(adminPassword);
-        adminUser.AddRole(nameof(UserRoles.User));
-        adminUser.AddRole(nameof(UserRoles.Admin));
+        adminUser.AddAdminRole();
 
         var defaultUser = User.CreateGuestUser(
             name: "Default User",
@@ -35,7 +34,7 @@ public static class DataSeeder
         var defaultPassword = hashingService.HashPassword(defaultUser, "Default1234");
         
         defaultUser.UpdatePassword(defaultPassword);
-        defaultUser.AddRole(nameof(UserRoles.User));
+        defaultUser.AddUserRole();
 
         users.Add(adminUser);
         users.Add(defaultUser);

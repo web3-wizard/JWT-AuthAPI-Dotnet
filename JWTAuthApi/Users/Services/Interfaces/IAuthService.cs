@@ -8,4 +8,5 @@ public interface IAuthService
 {
     public Task<ServiceResult> Register(RegisterRequest request);
     public Task<ServiceResult<LoginResponse>> Login(LoginRequest request);
+    public Task<ServiceResult> ConfirmedEmail(VerifyEmailRequest request);
 }

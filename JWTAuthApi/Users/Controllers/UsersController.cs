@@ -1,4 +1,5 @@
 using JWTAuthApi.DB;
+using JWTAuthApi.Users.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +8,18 @@ namespace JWTAuthApi.Users.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = nameof(UserRoles.User))]
 public class UsersController(AppDbContext dbContext) : ControllerBase
 {
     [HttpGet]
+    [Authorize(Roles = nameof(UserRoles.Admin))]
     public async Task<IActionResult> Get()
     {
-        var users = await dbContext.Users.ToListAsync();
+        var users = await dbContext.Users
+            .AsNoTracking()
+            .OrderByDescending(u => u.UpdatedAt)
+            .ToListAsync();
+        
         return Ok(users);
     }
 }
