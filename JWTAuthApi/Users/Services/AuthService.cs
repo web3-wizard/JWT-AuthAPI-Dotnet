@@ -19,8 +19,10 @@ public class AuthService(
     {
         try
         {
+            var (name, username, email, password) = request;
+            
             logger.LogInformation("Checking for existing user");
-            var isExistingUser = await CheckIfUserExists(email: request.Email, username: request.Username);
+            var isExistingUser = await CheckIfUserExists(email, username);
             
             if (isExistingUser)
             {
@@ -29,17 +31,10 @@ public class AuthService(
             }
             
             logger.LogInformation("Creating new user");
-            var user = new User()
-            {
-                Id = Guid.NewGuid(),
-                Name = request.Name,
-                Username = request.Username.ToLower(),
-                Email = request.Email.ToLower(),
-                PasswordHash = request.Password,
-            };
+            var user = User.CreateGuestUser(name, username, email);
 
-            var hashPassword = hashingService.HashPassword(user, request.Password);
-            user.PasswordHash = hashPassword;
+            var hashPassword = hashingService.HashPassword(user, password);
+            user.UpdatePassword(hashPassword);
             
             dbContext.Users.Add(user);
             await dbContext.SaveChangesAsync();

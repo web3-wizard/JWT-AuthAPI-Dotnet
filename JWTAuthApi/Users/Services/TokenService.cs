@@ -12,13 +12,13 @@ namespace JWTAuthApi.Users.Services;
 public class TokenService(IOptions<JWTConfig> jwtOptions) : ITokenService
 {
     private readonly JWTConfig _jwtConfig = jwtOptions.Value;
-    private readonly string _securityAlgorithm = SecurityAlgorithms.HmacSha512;
- 
+    private const string SecurityAlgorithm = SecurityAlgorithms.HmacSha512;
+
     public string GenerateToken(User user)
     {
         var key = Encoding.UTF8.GetBytes(_jwtConfig.Key);
         var securityKey = new SymmetricSecurityKey(key);
-        var credentials = new SigningCredentials(securityKey, _securityAlgorithm);
+        var credentials = new SigningCredentials(securityKey, SecurityAlgorithm);
         var expiresIn = DateTime.UtcNow.AddDays(_jwtConfig.ExpiresInDays);
         
         var claims = new List<Claim>
@@ -28,6 +28,8 @@ public class TokenService(IOptions<JWTConfig> jwtOptions) : ITokenService
             new(ClaimTypes.Email,user.Email),
             new("UserName", user.Username),
         };
+        
+        claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
         var token = new JwtSecurityToken(
             issuer: _jwtConfig.Issuer,
