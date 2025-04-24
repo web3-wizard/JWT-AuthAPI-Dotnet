@@ -17,14 +17,14 @@ public class AuthController(IAuthService authService) : ControllerBase
     [HttpPost]
     [Route("register")]
     [AllowAnonymous]
-    public async Task<ActionResult<ServiceResult>> Register([FromBody] RegisterRequest request)
+    public async Task<ActionResult<ServiceResult>> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken = default)
     {
         if (ModelState.IsValid == false)
         {
             return BadRequest(ModelState);
         }
 
-        var result = await authService.Register(request);
+        var result = await authService.Register(request, cancellationToken);
 
         return StatusCode((int)result.StatusCode, result);
     }
@@ -32,14 +32,14 @@ public class AuthController(IAuthService authService) : ControllerBase
     [HttpPost]
     [Route("login")]
     [AllowAnonymous]
-    public async Task<ActionResult<TokenResponseDTO>> Login([FromBody] LoginRequest request)
+    public async Task<ActionResult<TokenResponseDTO>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken = default)
     {
         if (ModelState.IsValid == false)
         {
             return BadRequest(ModelState);
         }
 
-        var result = await authService.Login(request);
+        var result = await authService.Login(request, cancellationToken);
 
         return StatusCode((int)result.StatusCode, result);
     }
@@ -47,7 +47,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     [HttpGet]
     [Route("confirmed/email")]
     [Authorize(Roles = nameof(UserRoles.Guest))]
-    public async Task<ActionResult<ServiceResult>> ConfirmedEmail()
+    public async Task<ActionResult<ServiceResult>> ConfirmedEmail(CancellationToken cancellationToken = default)
     {
         var id = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
         var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
@@ -59,7 +59,9 @@ public class AuthController(IAuthService authService) : ControllerBase
             return Unauthorized();
         }
 
-        var result = await authService.ConfirmedEmail(new VerifyEmailRequest(userId, email));
+        var verifyEmailRequest = new VerifyEmailRequest(userId, email);
+
+        var result = await authService.ConfirmedEmail(verifyEmailRequest, cancellationToken);
 
         return StatusCode((int)result.StatusCode, result);
     }
@@ -100,7 +102,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     [HttpPost]
     [Route("refresh-tokens")]
     [Authorize(Roles = $"{nameof(UserRoles.User)}, {nameof(UserRoles.Admin)}")]
-    public async Task<ActionResult<TokenResponseDTO>> RefreshTokens([FromBody] RefreshTokensRequest request)
+    public async Task<ActionResult<TokenResponseDTO>> RefreshTokens([FromBody] RefreshTokensRequest request, CancellationToken cancellationToken = default)
     {
         var id = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
 
@@ -111,7 +113,7 @@ public class AuthController(IAuthService authService) : ControllerBase
             return Unauthorized();
         }
 
-        var result = await authService.RefreshTokens(request);
+        var result = await authService.RefreshTokens(request, cancellationToken);
 
         return StatusCode((int)result.StatusCode, result);
     }

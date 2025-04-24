@@ -13,12 +13,12 @@ public class UsersController(AppDbContext dbContext) : ControllerBase
 {
     [HttpGet]
     [Authorize(Roles = nameof(UserRoles.Admin))]
-    public async Task<IActionResult> Get()
+    public async Task<IActionResult> Get(CancellationToken cancellationToken = default)
     {
         var users = await dbContext.Users
             .AsNoTracking()
             .OrderByDescending(u => u.UpdatedAt)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: cancellationToken);
         
         return Ok(users);
     }

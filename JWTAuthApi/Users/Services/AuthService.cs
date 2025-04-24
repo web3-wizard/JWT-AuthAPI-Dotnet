@@ -20,14 +20,14 @@ public class AuthService(
 {
     private readonly JWTConfig _jwtConfig = jwtOptions.Value;
 
-    public async Task<ServiceResult> Register(RegisterRequest request)
+    public async Task<ServiceResult> Register(RegisterRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
             var (name, username, email, password) = request;
 
             logger.LogInformation("Checking for existing user");
-            var isExistingUser = await CheckIfUserExists(email, username);
+            var isExistingUser = await CheckIfUserExists(email, username, cancellationToken);
 
             if (isExistingUser)
             {
@@ -42,7 +42,7 @@ public class AuthService(
             user.UpdatePassword(hashPassword);
 
             dbContext.Users.Add(user);
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation("User created successfully.");
 
@@ -55,12 +55,12 @@ public class AuthService(
         }
     }
 
-    public async Task<ServiceResult<TokenResponseDTO>> Login(LoginRequest request)
+    public async Task<ServiceResult<TokenResponseDTO>> Login(LoginRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
             logger.LogInformation("Checking for existing user");
-            User? user = await FindUserByUserName(request.Username);
+            User? user = await FindUserByUserName(request.Username, cancellationToken);
 
             if (user is null)
             {
@@ -91,12 +91,12 @@ public class AuthService(
         }
     }
 
-    public async Task<ServiceResult> ConfirmedEmail(VerifyEmailRequest request)
+    public async Task<ServiceResult> ConfirmedEmail(VerifyEmailRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
             logger.LogInformation("Checking for existing user");
-            var user = await FindUserById(request.UserId);
+            var user = await FindUserById(request.UserId, cancellationToken);
 
             if (user is null)
             {
@@ -113,7 +113,7 @@ public class AuthService(
             {
                 user.AddUserRole();
                 dbContext.Users.Update(user);
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(cancellationToken);
             }
 
             return new ServiceResult(HttpStatusCode.OK, "Email confirmed!");
@@ -125,12 +125,12 @@ public class AuthService(
         }
     }
 
-    public async Task<ServiceResult<TokenResponseDTO>> RefreshTokens(RefreshTokensRequest request)
+    public async Task<ServiceResult<TokenResponseDTO>> RefreshTokens(RefreshTokensRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
             logger.LogInformation("Checking for existing user");
-            var user = await FindUserById(request.UserId);
+            var user = await FindUserById(request.UserId, cancellationToken);
 
             if (user is null)
             {
@@ -190,25 +190,27 @@ public class AuthService(
         return refreshToken;
     }
 
-    private async Task<bool> CheckIfUserExists(string email, string username)
+    private async Task<bool> CheckIfUserExists(string email, string username,CancellationToken cancellationToken )
     {
         var user = await dbContext.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Username == username.ToLower()
-                                      || u.Email == email.ToLower());
+                                      || u.Email == email.ToLower(), cancellationToken: cancellationToken);
 
         return user is not null;
     }
 
-    private async Task<User?> FindUserByUserName(string username)
+    private async Task<User?> FindUserByUserName(string username, CancellationToken cancellationToken)
     {
         return await dbContext.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Username == username.ToLower());
+            .FirstOrDefaultAsync(u => u.Username == username.ToLower(), cancellationToken: cancellationToken);
     }
 
-    private async Task<User?> FindUserById(Guid userId)
+    private async Task<User?> FindUserById(Guid userId, CancellationToken cancellationToken)
     {
-        return await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        return await dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken: cancellationToken);
     }
 }
