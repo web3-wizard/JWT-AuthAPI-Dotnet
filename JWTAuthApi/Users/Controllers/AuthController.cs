@@ -16,6 +16,7 @@ public class AuthController(IAuthService authService) : ControllerBase
 {
     [HttpPost]
     [Route("register")]
+    [AllowAnonymous]
     public async Task<ActionResult<ServiceResult>> Register([FromBody] RegisterRequest request)
     {
         if (ModelState.IsValid == false)
@@ -30,7 +31,8 @@ public class AuthController(IAuthService authService) : ControllerBase
 
     [HttpPost]
     [Route("login")]
-    public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
+    [AllowAnonymous]
+    public async Task<ActionResult<TokenResponseDTO>> Login([FromBody] LoginRequest request)
     {
         if (ModelState.IsValid == false)
         {
@@ -50,21 +52,18 @@ public class AuthController(IAuthService authService) : ControllerBase
         var id = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
         var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
 
-        if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(email))
+        if (string.IsNullOrEmpty(id)
+            || string.IsNullOrEmpty(email)
+            || Guid.TryParse(id, out var userId) == false)
         {
             return Unauthorized();
         }
 
-        if (Guid.TryParse(id, out var userId) == false)
-        {
-            return BadRequest();
-        }
-
         var result = await authService.ConfirmedEmail(new VerifyEmailRequest(userId, email));
-        
+
         return StatusCode((int)result.StatusCode, result);
     }
-    
+
     [HttpGet]
     [Route("verify")]
     [Authorize]
@@ -80,26 +79,40 @@ public class AuthController(IAuthService authService) : ControllerBase
             .ToList();
 
         if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(name) || string.IsNullOrEmpty(email) ||
-            string.IsNullOrEmpty(username))
+            string.IsNullOrEmpty(username) || Guid.TryParse(id, out var userId) == false)
         {
             return Unauthorized();
         }
 
-        if (Guid.TryParse(id, out var userId) == false)
-        {
-            return BadRequest();
-        }
-
         var verifyResponse = new VerifyResponse(
-            Id: userId, 
-            Name: name, 
-            Email: email, 
-            Username: username, 
+            Id: userId,
+            Name: name,
+            Email: email,
+            Username: username,
             Roles: roles);
-        
+
         return Ok(new ServiceResult<VerifyResponse>(
             HttpStatusCode.OK,
             "User verified",
             verifyResponse));
+    }
+
+    [HttpPost]
+    [Route("refresh-tokens")]
+    [Authorize(Roles = $"{nameof(UserRoles.User)}, {nameof(UserRoles.Admin)}")]
+    public async Task<ActionResult<TokenResponseDTO>> RefreshTokens([FromBody] RefreshTokensRequest request)
+    {
+        var id = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(id) 
+            || Guid.TryParse(id, out var userId) == false
+            || userId.Equals(request.UserId) == false)
+        {
+            return Unauthorized();
+        }
+
+        var result = await authService.RefreshTokens(request);
+
+        return StatusCode((int)result.StatusCode, result);
     }
 }

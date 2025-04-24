@@ -25,27 +25,27 @@ public class AuthService(
         try
         {
             var (name, username, email, password) = request;
-            
+
             logger.LogInformation("Checking for existing user");
             var isExistingUser = await CheckIfUserExists(email, username);
-            
+
             if (isExistingUser)
             {
                 logger.LogInformation("User already exists");
                 return new ServiceResult(HttpStatusCode.Conflict, "User already exists!");
             }
-            
+
             logger.LogInformation("Creating new user");
             var user = User.CreateGuestUser(name, username, email);
 
             var hashPassword = hashingService.HashPassword(user, password);
             user.UpdatePassword(hashPassword);
-            
+
             dbContext.Users.Add(user);
             await dbContext.SaveChangesAsync();
 
             logger.LogInformation("User created successfully.");
-            
+
             return new ServiceResult(HttpStatusCode.Created, "User register successfully!");
         }
         catch (Exception ex)
@@ -55,45 +55,39 @@ public class AuthService(
         }
     }
 
-    public async Task<ServiceResult<LoginResponse>> Login(LoginRequest request)
+    public async Task<ServiceResult<TokenResponseDTO>> Login(LoginRequest request)
     {
         try
         {
             logger.LogInformation("Checking for existing user");
-            var user = await dbContext.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Username == request.Username.ToLower());
+            User? user = await FindUserByUserName(request.Username);
 
             if (user is null)
             {
                 logger.LogWarning("User not found.");
-                return new ServiceResult<LoginResponse>(HttpStatusCode.BadRequest, "Invalid Credentials!");
+                return new ServiceResult<TokenResponseDTO>(HttpStatusCode.BadRequest, "Invalid Credentials!");
             }
-            
+
             logger.LogInformation("Validating password");
             var isValidPassword = hashingService.IsValidPassword(user, request.Password);
 
             if (isValidPassword == false)
             {
                 logger.LogWarning("Invalid Password.");
-                return new ServiceResult<LoginResponse>(HttpStatusCode.BadRequest, "Invalid Credentials!");
+                return new ServiceResult<TokenResponseDTO>(HttpStatusCode.BadRequest, "Invalid Credentials!");
             }
 
-            var accessToken = tokenService.GenerateAccessToken(user);
-            logger.LogInformation("Access Token generated successfully.");
+            var tokenResponseDTO = await GenerateTokens(user);
 
-            var refreshToken = await GenerateAndSaveRefreshToken(user);
-            logger.LogInformation("Refresh Token generated successfully");
-            
-            return new ServiceResult<LoginResponse>(
-                HttpStatusCode.OK,
-                "Logged in successfully",
-                new LoginResponse(AccessToken: accessToken, RefreshToken: refreshToken));
+            return new ServiceResult<TokenResponseDTO>(
+                statusCode: HttpStatusCode.OK,
+                message: "Logged in successfully",
+                data: tokenResponseDTO);
         }
         catch (Exception ex)
         {
             logger.LogError(exception: ex, message: $"Failed to login user. Error: {ex.Message}");
-            return new ServiceResult<LoginResponse>(HttpStatusCode.InternalServerError, "Something went wrong");
+            return new ServiceResult<TokenResponseDTO>(HttpStatusCode.InternalServerError, "Something went wrong");
         }
     }
 
@@ -101,10 +95,12 @@ public class AuthService(
     {
         try
         {
-            var user = await dbContext.Users.FindAsync(request.UserId);
+            logger.LogInformation("Checking for existing user");
+            var user = await FindUserById(request.UserId);
 
             if (user is null)
             {
+                logger.LogWarning("User not found.");
                 return new ServiceResult(HttpStatusCode.NotFound, "User not exists!");
             }
 
@@ -125,8 +121,59 @@ public class AuthService(
         catch (Exception ex)
         {
             logger.LogError(exception: ex, message: $"Failed to confirmed user email. Error: {ex.Message}");
-            return new ServiceResult<LoginResponse>(HttpStatusCode.InternalServerError, "Something went wrong");
+            return new ServiceResult<TokenResponseDTO>(HttpStatusCode.InternalServerError, "Something went wrong");
         }
+    }
+
+    public async Task<ServiceResult<TokenResponseDTO>> RefreshTokens(RefreshTokensRequest request)
+    {
+        try
+        {
+            logger.LogInformation("Checking for existing user");
+            var user = await FindUserById(request.UserId);
+
+            if (user is null)
+            {
+                logger.LogWarning("User not found.");
+                return new ServiceResult<TokenResponseDTO>(HttpStatusCode.NotFound, "User not exists!");
+            }
+
+            if (CheckValidRefreshToken(user: user, refreshToken: request.RefreshToken))
+            {
+                logger.LogWarning("Invalid Refresh Token");
+                return new ServiceResult<TokenResponseDTO>(HttpStatusCode.Unauthorized, "Please logged in again!");
+            }
+
+            var tokenResponseDTO = await GenerateTokens(user);
+
+            return new ServiceResult<TokenResponseDTO>(
+                statusCode: HttpStatusCode.OK,
+                message: "Tokens refreshed successfully",
+                data: tokenResponseDTO);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(exception: ex, message: $"Failed to refresh tokens. Error: {ex.Message}");
+            return new ServiceResult<TokenResponseDTO>(HttpStatusCode.InternalServerError, "Something went wrong");
+        }
+    }
+
+    private static bool CheckValidRefreshToken(User user, string refreshToken)
+    {
+        return string.IsNullOrEmpty(user.RefreshToken)
+                || user.RefreshToken.Equals(refreshToken) == false
+                || user.RefreshTokenExpiryTime <= DateTime.UtcNow;
+    }
+
+    private async Task<TokenResponseDTO> GenerateTokens(User user)
+    {
+        var accessToken = tokenService.GenerateAccessToken(user);
+        logger.LogInformation("Access Token generated successfully.");
+
+        var refreshToken = await GenerateAndSaveRefreshToken(user);
+        logger.LogInformation("Refresh Token generated successfully");
+
+        return new TokenResponseDTO(AccessToken: accessToken, RefreshToken: refreshToken);
     }
 
     private async Task<string> GenerateAndSaveRefreshToken(User user)
@@ -138,6 +185,8 @@ public class AuthService(
         dbContext.Users.Update(user);
         await dbContext.SaveChangesAsync();
 
+        logger.LogInformation("Refresh Token updated successfully.");
+
         return refreshToken;
     }
 
@@ -145,9 +194,21 @@ public class AuthService(
     {
         var user = await dbContext.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Username == username.ToLower() 
-                                      || x.Email == email.ToLower());
+            .FirstOrDefaultAsync(u => u.Username == username.ToLower()
+                                      || u.Email == email.ToLower());
 
         return user is not null;
+    }
+
+    private async Task<User?> FindUserByUserName(string username)
+    {
+        return await dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Username == username.ToLower());
+    }
+
+    private async Task<User?> FindUserById(Guid userId)
+    {
+        return await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
     }
 }
