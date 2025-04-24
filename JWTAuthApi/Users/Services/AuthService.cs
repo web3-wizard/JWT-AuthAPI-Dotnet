@@ -3,8 +3,8 @@ using JWTAuthApi.DB;
 using JWTAuthApi.Users.Configs;
 using JWTAuthApi.Users.Entities;
 using JWTAuthApi.Users.Models;
+using JWTAuthApi.Users.Models.DTOs;
 using JWTAuthApi.Users.Models.Requests;
-using JWTAuthApi.Users.Models.Responses;
 using JWTAuthApi.Users.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -55,7 +55,7 @@ public class AuthService(
         }
     }
 
-    public async Task<ServiceResult<TokenResponseDTO>> Login(LoginRequest request, CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<TokenDTO>> Login(LoginRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -65,7 +65,7 @@ public class AuthService(
             if (user is null)
             {
                 logger.LogWarning("User not found.");
-                return new ServiceResult<TokenResponseDTO>(HttpStatusCode.BadRequest, "Invalid Credentials!");
+                return new ServiceResult<TokenDTO>(HttpStatusCode.BadRequest, "Invalid Credentials!");
             }
 
             logger.LogInformation("Validating password");
@@ -74,12 +74,12 @@ public class AuthService(
             if (isValidPassword == false)
             {
                 logger.LogWarning("Invalid Password.");
-                return new ServiceResult<TokenResponseDTO>(HttpStatusCode.BadRequest, "Invalid Credentials!");
+                return new ServiceResult<TokenDTO>(HttpStatusCode.BadRequest, "Invalid Credentials!");
             }
 
             var tokenResponseDTO = await GenerateTokens(user);
 
-            return new ServiceResult<TokenResponseDTO>(
+            return new ServiceResult<TokenDTO>(
                 statusCode: HttpStatusCode.OK,
                 message: "Logged in successfully",
                 data: tokenResponseDTO);
@@ -87,7 +87,7 @@ public class AuthService(
         catch (Exception ex)
         {
             logger.LogError(exception: ex, message: $"Failed to login user. Error: {ex.Message}");
-            return new ServiceResult<TokenResponseDTO>(HttpStatusCode.InternalServerError, "Something went wrong");
+            return new ServiceResult<TokenDTO>(HttpStatusCode.InternalServerError, "Something went wrong");
         }
     }
 
@@ -121,11 +121,11 @@ public class AuthService(
         catch (Exception ex)
         {
             logger.LogError(exception: ex, message: $"Failed to confirmed user email. Error: {ex.Message}");
-            return new ServiceResult<TokenResponseDTO>(HttpStatusCode.InternalServerError, "Something went wrong");
+            return new ServiceResult<TokenDTO>(HttpStatusCode.InternalServerError, "Something went wrong");
         }
     }
 
-    public async Task<ServiceResult<TokenResponseDTO>> RefreshTokens(RefreshTokensRequest request, CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<TokenDTO>> RefreshTokens(RefreshTokensRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -135,18 +135,18 @@ public class AuthService(
             if (user is null)
             {
                 logger.LogWarning("User not found.");
-                return new ServiceResult<TokenResponseDTO>(HttpStatusCode.NotFound, "User not exists!");
+                return new ServiceResult<TokenDTO>(HttpStatusCode.NotFound, "User not exists!");
             }
 
             if (CheckValidRefreshToken(user: user, refreshToken: request.RefreshToken))
             {
                 logger.LogWarning("Invalid Refresh Token");
-                return new ServiceResult<TokenResponseDTO>(HttpStatusCode.Unauthorized, "Please logged in again!");
+                return new ServiceResult<TokenDTO>(HttpStatusCode.Unauthorized, "Please logged in again!");
             }
 
             var tokenResponseDTO = await GenerateTokens(user);
 
-            return new ServiceResult<TokenResponseDTO>(
+            return new ServiceResult<TokenDTO>(
                 statusCode: HttpStatusCode.OK,
                 message: "Tokens refreshed successfully",
                 data: tokenResponseDTO);
@@ -154,7 +154,7 @@ public class AuthService(
         catch (Exception ex)
         {
             logger.LogError(exception: ex, message: $"Failed to refresh tokens. Error: {ex.Message}");
-            return new ServiceResult<TokenResponseDTO>(HttpStatusCode.InternalServerError, "Something went wrong");
+            return new ServiceResult<TokenDTO>(HttpStatusCode.InternalServerError, "Something went wrong");
         }
     }
 
@@ -165,7 +165,7 @@ public class AuthService(
                 || user.RefreshTokenExpiryTime <= DateTime.UtcNow;
     }
 
-    private async Task<TokenResponseDTO> GenerateTokens(User user)
+    private async Task<TokenDTO> GenerateTokens(User user)
     {
         var accessToken = tokenService.GenerateAccessToken(user);
         logger.LogInformation("Access Token generated successfully.");
@@ -173,7 +173,7 @@ public class AuthService(
         var refreshToken = await GenerateAndSaveRefreshToken(user);
         logger.LogInformation("Refresh Token generated successfully");
 
-        return new TokenResponseDTO(AccessToken: accessToken, RefreshToken: refreshToken);
+        return new TokenDTO(AccessToken: accessToken, RefreshToken: refreshToken);
     }
 
     private async Task<string> GenerateAndSaveRefreshToken(User user)

@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Claims;
 using JWTAuthApi.Users.Entities;
 using JWTAuthApi.Users.Models;
+using JWTAuthApi.Users.Models.DTOs;
 using JWTAuthApi.Users.Models.Requests;
 using JWTAuthApi.Users.Models.Responses;
 using JWTAuthApi.Users.Services.Interfaces;
@@ -32,7 +33,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     [HttpPost]
     [Route("login")]
     [AllowAnonymous]
-    public async Task<ActionResult<TokenResponseDTO>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<TokenDTO>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken = default)
     {
         if (ModelState.IsValid == false)
         {
@@ -101,8 +102,8 @@ public class AuthController(IAuthService authService) : ControllerBase
 
     [HttpPost]
     [Route("refresh-tokens")]
-    [Authorize(Roles = $"{nameof(UserRoles.User)}, {nameof(UserRoles.Admin)}")]
-    public async Task<ActionResult<TokenResponseDTO>> RefreshTokens([FromBody] RefreshTokensRequest request, CancellationToken cancellationToken = default)
+    [Authorize(Roles = nameof(UserRoles.User))]
+    public async Task<ActionResult<TokenDTO>> RefreshTokens([FromBody] RefreshTokensRequest request, CancellationToken cancellationToken = default)
     {
         var id = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
 
