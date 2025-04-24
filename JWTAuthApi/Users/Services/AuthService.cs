@@ -1,11 +1,13 @@
 using System.Net;
 using JWTAuthApi.DB;
+using JWTAuthApi.Users.Configs;
 using JWTAuthApi.Users.Entities;
 using JWTAuthApi.Users.Models;
 using JWTAuthApi.Users.Models.Requests;
 using JWTAuthApi.Users.Models.Responses;
 using JWTAuthApi.Users.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace JWTAuthApi.Users.Services;
 
@@ -13,8 +15,11 @@ public class AuthService(
     AppDbContext dbContext,
     IHashingService hashingService,
     ITokenService tokenService,
+    IOptions<JWTConfig> jwtOptions,
     ILogger<AuthService> logger) : IAuthService
 {
+    private readonly JWTConfig _jwtConfig = jwtOptions.Value;
+
     public async Task<ServiceResult> Register(RegisterRequest request)
     {
         try
@@ -74,13 +79,16 @@ public class AuthService(
                 return new ServiceResult<LoginResponse>(HttpStatusCode.BadRequest, "Invalid Credentials!");
             }
 
-            var token = tokenService.GenerateToken(user);
-            logger.LogInformation("Token generated successfully.");
+            var accessToken = tokenService.GenerateAccessToken(user);
+            logger.LogInformation("Access Token generated successfully.");
+
+            var refreshToken = await GenerateAndSaveRefreshToken(user);
+            logger.LogInformation("Refresh Token generated successfully");
             
             return new ServiceResult<LoginResponse>(
                 HttpStatusCode.OK,
                 "Logged in successfully",
-                new LoginResponse(token));
+                new LoginResponse(AccessToken: accessToken, RefreshToken: refreshToken));
         }
         catch (Exception ex)
         {
@@ -119,6 +127,18 @@ public class AuthService(
             logger.LogError(exception: ex, message: $"Failed to confirmed user email. Error: {ex.Message}");
             return new ServiceResult<LoginResponse>(HttpStatusCode.InternalServerError, "Something went wrong");
         }
+    }
+
+    private async Task<string> GenerateAndSaveRefreshToken(User user)
+    {
+        string refreshToken = tokenService.GenerateRefreshToken();
+        DateTime expiryTime = DateTime.UtcNow.AddDays(_jwtConfig.RefreshTokenExpiresInDays);
+
+        user.UpdateRefreshToken(refreshToken, expiryTime);
+        dbContext.Users.Update(user);
+        await dbContext.SaveChangesAsync();
+
+        return refreshToken;
     }
 
     private async Task<bool> CheckIfUserExists(string email, string username)

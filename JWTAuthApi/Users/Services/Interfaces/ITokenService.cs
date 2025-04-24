@@ -4,5 +4,7 @@ namespace JWTAuthApi.Users.Services.Interfaces;
 
 public interface ITokenService
 {
-    public string GenerateToken(User user);
+    public string GenerateAccessToken(User user);
+
+    public string GenerateRefreshToken();
 }

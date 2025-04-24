@@ -1,3 +1,3 @@
 namespace JWTAuthApi.Users.Models.Responses;
 
-public record LoginResponse(string Token);
+public record LoginResponse(string AccessToken, string RefreshToken);

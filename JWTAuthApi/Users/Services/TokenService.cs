@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using JWTAuthApi.Users.Configs;
 using JWTAuthApi.Users.Entities;
@@ -14,12 +15,12 @@ public class TokenService(IOptions<JWTConfig> jwtOptions) : ITokenService
     private readonly JWTConfig _jwtConfig = jwtOptions.Value;
     private const string SecurityAlgorithm = SecurityAlgorithms.HmacSha512;
 
-    public string GenerateToken(User user)
+    public string GenerateAccessToken(User user)
     {
         var key = Encoding.UTF8.GetBytes(_jwtConfig.Key);
         var securityKey = new SymmetricSecurityKey(key);
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithm);
-        var expiresIn = DateTime.UtcNow.AddDays(_jwtConfig.ExpiresInDays);
+        var expiresIn = DateTime.UtcNow.AddMinutes(_jwtConfig.AccessTokenExpiresInMin);
         
         var claims = new List<Claim>
         {
@@ -39,5 +40,17 @@ public class TokenService(IOptions<JWTConfig> jwtOptions) : ITokenService
             signingCredentials: credentials);
         
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public string GenerateRefreshToken()
+    {
+        var randomNumber = new byte[32];
+        
+        using (var rng = RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(randomNumber);
+        }
+
+        return Convert.ToBase64String(randomNumber); 
     }
 }
