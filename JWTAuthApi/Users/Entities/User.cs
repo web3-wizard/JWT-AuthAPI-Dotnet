@@ -32,6 +32,9 @@ public class User
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; private set; }
 
+    public string? RefreshToken { get; private set; }
+    public DateTime? RefreshTokenExpiryTime { get; private set; }
+
     private User(string name, string username, string email, List<string> roles)
     {
         Id = Guid.NewGuid();
@@ -75,6 +78,13 @@ public class User
         IsEmailConfirmed = true;
         Roles.Remove(nameof(UserRoles.Guest));
         Roles.AddRange([nameof(UserRoles.User), nameof(UserRoles.Admin)]);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateRefreshToken(string token, DateTime expiryTime)
+    {
+        RefreshToken = token;
+        RefreshTokenExpiryTime = expiryTime;
         UpdatedAt = DateTime.UtcNow;
     }
 }
