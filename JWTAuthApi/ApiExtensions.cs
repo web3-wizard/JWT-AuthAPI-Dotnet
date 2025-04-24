@@ -42,6 +42,7 @@ public static class ApiExtensions
         services.AddScoped<ITokenService, TokenService>();
         
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUserService, UserService>();
 
         return services;
     }
