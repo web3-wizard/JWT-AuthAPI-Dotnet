@@ -47,7 +47,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     [HttpGet]
     [Route("confirmed/email")]
     [Authorize(Roles = nameof(UserRoles.Guest))]
-    public async Task<ActionResult<ServiceResult>> VerifyEmail()
+    public async Task<ActionResult<ServiceResult>> ConfirmedEmail()
     {
         var id = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
         var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;

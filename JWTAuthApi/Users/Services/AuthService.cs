@@ -112,9 +112,9 @@ public class AuthService(
             if (user.Roles.Contains(nameof(UserRoles.Guest)))
             {
                 user.AddUserRole();
+                dbContext.Users.Update(user);
+                await dbContext.SaveChangesAsync();
             }
-
-            await dbContext.SaveChangesAsync();
 
             return new ServiceResult(HttpStatusCode.OK, "Email confirmed!");
         }
