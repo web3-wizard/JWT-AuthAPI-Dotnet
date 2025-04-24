@@ -23,6 +23,16 @@ public class UsersController(IUserService userService) : ControllerBase
     }
 
     [HttpGet]
+    [Route("{userId:Guid}/update-role")]
+    [Authorize(Roles = nameof(UserRoles.Admin))]
+    public async Task<ActionResult<ServiceResult<UserDTO>>> UpdateRole([FromRoute] Guid userId, CancellationToken cancellationToken = default)
+    { 
+       var result = await userService.UpdateUserAsAdmin(userId, cancellationToken);
+
+        return StatusCode((int)result.StatusCode, result);
+    }
+
+    [HttpGet]
     [Route("details")]
     public async Task<ActionResult<ServiceResult<UserDTO>>> GetDetails(CancellationToken cancellationToken = default)
     {

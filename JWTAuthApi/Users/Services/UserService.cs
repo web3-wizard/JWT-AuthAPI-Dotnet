@@ -63,6 +63,42 @@ public class UserService(
         }
     }
 
+    public async Task<ServiceResult> UpdateUserAsAdmin(Guid userId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Fetching User data... Id: {id}", userId);
+            var user = await FindUserById(userId, cancellationToken);
+
+            if (user is null)
+            {
+                logger.LogWarning("User not found. Id: {id}", userId);
+                return new ServiceResult(HttpStatusCode.NotFound, "User data not found");
+            }
+
+            logger.LogInformation("User data fetched successfully. Id: {id}", user.Id);
+
+            if (user.Roles.Contains(nameof(UserRoles.Admin)))
+            {
+                logger.LogInformation("User already has admin role. Id: {id}", user.Id);
+                return new ServiceResult(HttpStatusCode.Conflict, "User already has requested Role");
+            }
+
+            user.AddAdminRole();
+            dbContext.Users.Update(user);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            logger.LogInformation("User role updated successfully. Id: {id}", user.Id);
+
+            return new ServiceResult(HttpStatusCode.OK, "User role updated successfully");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(exception: ex, message: $"Failed to update user role. Id: {userId}, Error: {ex.Message}");
+            return new ServiceResult(HttpStatusCode.InternalServerError, "Something went wrong");
+        }
+    }
+
     private async Task<User?> FindUserById(Guid userId, CancellationToken cancellationToken)
     {
         return await dbContext.Users

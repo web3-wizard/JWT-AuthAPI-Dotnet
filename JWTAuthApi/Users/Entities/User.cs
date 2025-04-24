@@ -68,16 +68,14 @@ public class User
     public void AddUserRole()
     {
         IsEmailConfirmed = true;
-        Roles.Remove(nameof(UserRoles.Guest));
-        Roles.Add(nameof(UserRoles.User));
+        Roles = [nameof(UserRoles.User)];
         UpdatedAt = DateTime.UtcNow;
     }
     
     public void AddAdminRole()
     {
         IsEmailConfirmed = true;
-        Roles.Remove(nameof(UserRoles.Guest));
-        Roles.AddRange([nameof(UserRoles.User), nameof(UserRoles.Admin)]);
+        Roles = [nameof(UserRoles.User), nameof(UserRoles.Admin)];
         UpdatedAt = DateTime.UtcNow;
     }
 

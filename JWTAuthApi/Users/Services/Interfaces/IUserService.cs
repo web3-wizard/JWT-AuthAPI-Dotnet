@@ -7,4 +7,5 @@ public interface IUserService
 {
     Task<ServiceResult<List<UserDTO>>> GetAllUser(CancellationToken cancellationToken);
     Task<ServiceResult<UserDTO>> GetUser(Guid userId, CancellationToken cancellationToken);
+    Task<ServiceResult> UpdateUserAsAdmin(Guid userId, CancellationToken cancellationToken);
 }
